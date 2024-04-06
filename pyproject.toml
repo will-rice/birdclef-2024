@@ -1,0 +1,15 @@
+[tool.isort]
+known_first_party = ["birdclef"]
+
+[tool.ruff.lint]
+select = ["C", "E", "F", "I", "W", "D", "N", "B"]
+ignore-init-module-imports = true
+ignore = ["S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

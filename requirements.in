@@ -1,0 +1,15 @@
+black
+isort
+ruff
+mypy
+pip-tools
+pydocstyle
+pytest
+torch
+torchvision
+torchaudio
+pytorch-lightning
+transformers
+pandas
+audiomentations
+torch-audiomentations

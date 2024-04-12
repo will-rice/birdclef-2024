@@ -13,18 +13,24 @@ from audiomentations import (
     Compose,
     Gain,
     Mp3Compression,
+    PitchShift,
     PolarityInversion,
     Reverse,
     Shift,
     TimeMask,
 )
+from torch import nn
 from torch.utils.data import Dataset
+
+from birdclef.signal import MelSpectrogram
+from birdclef.transforms import SpecFreqMask, SpecTimeMask
 
 
 class Batch(NamedTuple):
     """Batch of inputs."""
 
     audio: torch.Tensor
+    specs: torch.Tensor
     label_id: torch.Tensor
     lengths: torch.Tensor
 
@@ -41,7 +47,7 @@ class BirdCLEF2024Dataset(Dataset):
         }
         self.labels = list(self.label_map.keys())
         self.max_length = 32000 * 5
-        self.apply_augmentation = Compose(
+        self.waveform_augmentations = Compose(
             transforms=[
                 Gain(p=0.5),
                 PolarityInversion(p=0.5),
@@ -51,8 +57,14 @@ class BirdCLEF2024Dataset(Dataset):
                 TimeMask(p=0.5),
                 Mp3Compression(p=0.5),
                 Reverse(p=0.5),
+                PitchShift(min_semitones=-5.0, max_semitones=5.0, p=0.5),
             ]
         )
+        self.spec_augmentations = nn.Sequential(
+            SpecFreqMask(num_masks=3, size=10, p=0.3),
+            SpecTimeMask(num_masks=3, size=20, p=0.3),
+        )
+        self.mel_fn = MelSpectrogram()
         self.transform = True
 
     def __len__(self) -> int:
@@ -74,15 +86,19 @@ class BirdCLEF2024Dataset(Dataset):
 
         audio_length = self.max_length
 
+        spec = self.mel_fn(audio)
+
         if self.transform:
             # Apply augmentation
-            audio = self.apply_augmentation(audio.numpy(), sample_rate=32000)
+            audio = self.waveform_augmentations(audio.numpy(), sample_rate=32000)
             audio = torch.from_numpy(audio.copy())
+            spec = self.spec_augmentations(spec)
 
         label_id = self.label_map[sample.primary_label]
 
         return Batch(
             audio=audio,
+            specs=spec,
             label_id=torch.tensor(label_id),
             lengths=torch.tensor(audio_length),
         )

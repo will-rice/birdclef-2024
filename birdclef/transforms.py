@@ -1,20 +1,48 @@
 """Transforms for the data augmentation."""
 
+import random
+
 import torch
-from audiomentations import Mp3Compression
+import torchaudio
 from torch import nn
 
 
-class TorchMP3Compression(nn.Module):
-    """MP3 compression transform."""
+class SpecFreqMask(nn.Module):
+    """Frequency Mask."""
 
-    def __init__(self, p: float = 0.5) -> None:
+    def __init__(self, num_masks: int, size: int, p: float = 0.5) -> None:
         super().__init__()
-        self.transform = Mp3Compression(p=p)
+        self.num_masks = num_masks
+        self.size = size
+        self.p = p
+        self.transform = torchaudio.transforms.FrequencyMasking(
+            freq_mask_param=self.size,
+        )
 
-    def forward(self, x: torch.Tensor, sample_rate: int = 32000) -> torch.Tensor:
-        """Forward pass."""
-        x = x.numpy()
-        x = self.transform(x, sample_rate=sample_rate)
-        x = torch.from_numpy(x.copy())
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward Pass."""
+        if random.random() <= self.p:
+            for _ in range(self.num_masks):
+                x = self.transform(x)
+        return x
+
+
+class SpecTimeMask(nn.Module):
+    """Time Mask."""
+
+    def __init__(self, num_masks: int, size: int, p: float = 0.5) -> None:
+        super().__init__()
+        self.num_masks = num_masks
+        self.size = size
+        self.p = p
+        self.transform = torchaudio.transforms.TimeMasking(
+            time_mask_param=self.size,
+            p=1.0,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward Pass."""
+        if random.random() <= self.p:
+            for _ in range(self.num_masks):
+                x = self.transform(x)
         return x

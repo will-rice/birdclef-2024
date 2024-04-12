@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+subsys=$1
+command=$2
+shift; shift
+exec python -m "birdclef.scripts.$subsys.$command" "$@"

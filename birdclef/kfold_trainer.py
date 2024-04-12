@@ -1,0 +1,209 @@
+"""StratifiedKFold trainer for birdCLEF dataset."""
+
+import gc
+from copy import deepcopy
+from pathlib import Path
+
+import torch
+import wandb
+from sklearn.model_selection import StratifiedKFold
+from torch import nn
+from torch.utils.data import DataLoader, SubsetRandomSampler
+from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
+from torchmetrics.aggregation import MeanMetric
+from tqdm import tqdm
+
+from birdclef.datasets.birdclef2024 import Batch, BirdCLEF2024Dataset
+
+
+class StratifiedKFoldTrainer:
+    """StratifiedKFold trainer for birdCLEF dataset."""
+
+    def __init__(
+        self,
+        model: nn.Module,
+        dataset: BirdCLEF2024Dataset,
+        log_path: Path,
+        num_folds: int = 5,
+        num_epochs: int = 30,
+        batch_size: int = 16,
+        num_workers: int = 12,
+        debug: bool = False,
+    ) -> None:
+        self.models = [deepcopy(model) for _ in range(num_folds)]
+        if torch.cuda.is_available():
+            for m in self.models:
+                m.cuda()
+        self.dataset = dataset
+        self.log_path = log_path
+        self.num_folds = num_folds
+        self.num_epochs = num_epochs
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.debug = debug
+        self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
+        self.loss_fn = nn.CrossEntropyLoss()
+        self.train_loss = MeanMetric()
+        self.val_loss = MeanMetric()
+        metrics = MetricCollection(
+            [
+                Accuracy(task="multiclass", num_classes=182, average="macro"),
+                Precision(task="multiclass", num_classes=182, average="macro"),
+                Recall(task="multiclass", num_classes=182, average="macro"),
+                AUROC(task="multiclass", num_classes=182, average="macro"),
+            ]
+        )
+        self.train_metrics = metrics.clone(prefix="train_")
+        self.val_metrics = metrics.clone(prefix="val_")
+        self.global_step = 0
+        self.fold = 0
+        self.epoch = 0
+        self.model = self.models[self.fold]
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+
+    def fit(self) -> None:
+        """Train the model."""
+        for train_ids, val_ids in self.splitter.split(
+            self.dataset, self.dataset.metadata.primary_label
+        ):
+            self.on_fold_begin()
+
+            train_sampler = SubsetRandomSampler(train_ids)
+            val_sampler = SubsetRandomSampler(val_ids)
+            self.dataset.transform = True
+            train_loader = DataLoader(
+                self.dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                pin_memory=False,
+                sampler=train_sampler,
+            )
+            self.dataset.transform = False
+            val_loader = DataLoader(
+                self.dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                pin_memory=False,
+                sampler=val_sampler,
+            )
+            for _ in range(self.num_epochs):
+                self.train(train_loader)
+                self.validate(val_loader)
+                self.on_epoch_end()
+            self.on_fold_end()
+
+        wandb.finish()
+
+    def on_fold_begin(self) -> None:
+        """Start fold."""
+        self.model = self.models[self.fold]
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+
+        wandb.init(
+            project="birdclef-2024",
+            group=self.log_path.name,
+            name=f"{self.log_path.name}-{self.fold}",
+            mode="offline" if self.debug else "online",
+        )
+
+    def train(self, dataloader: DataLoader) -> None:
+        """Train the model."""
+        with tqdm(dataloader, desc=self.log_path.name) as pbar:
+            for batch in dataloader:
+                with torch.autocast(
+                    enabled=torch.cuda.is_available(),
+                    device_type="cuda",
+                    dtype=torch.bfloat16,
+                ):
+                    loss = self.train_step(batch)
+                    pbar.set_postfix(
+                        {"fold": self.fold, "epoch": self.epoch, "loss": loss.item()}
+                    )
+                    pbar.update()
+                    self.global_step += 1
+
+    def train_step(self, batch: Batch) -> torch.Tensor:
+        """Train step."""
+        self.model.train()
+        self.optimizer.zero_grad(set_to_none=True)
+        logits = self.model(batch.audio.cuda(), batch.lengths.cuda())
+        loss = self.loss_fn(logits, batch.label_id.cuda())
+        loss.backward()
+        self.optimizer.step()
+        train_loss = self.train_loss(loss.cpu())
+        metrics = self.train_metrics(logits.softmax(dim=1).cpu(), batch.label_id)
+        wandb.log({"train_loss": train_loss, **metrics}, step=self.global_step)
+        return train_loss
+
+    def validate(self, dataloader: DataLoader) -> None:
+        """Validate the model."""
+        with tqdm(dataloader, desc=self.log_path.name) as pbar:
+            for batch in dataloader:
+                with torch.autocast(
+                    enabled=torch.cuda.is_available(),
+                    device_type="cuda",
+                    dtype=torch.bfloat16,
+                ):
+                    self.validate_step(batch)
+                    pbar.set_postfix(
+                        {
+                            "fold": self.fold,
+                            "epoch": self.epoch,
+                            "val_loss": self.val_loss.compute().item(),
+                        }
+                    )
+                    pbar.update()
+        self.on_validate_end()
+
+    def validate_step(self, batch: Batch) -> torch.Tensor:
+        """Validate step."""
+        self.model.eval()
+        with torch.no_grad():
+            logits = self.model(batch.audio.cuda(), batch.lengths.cuda())
+        loss = self.loss_fn(logits, batch.label_id.cuda())
+        val_loss = self.val_loss(loss.cpu())
+        self.val_metrics.update(logits.softmax(dim=1).cpu(), batch.label_id)
+        return val_loss
+
+    def on_validate_end(self) -> None:
+        """On validate end."""
+        wandb.log(
+            {
+                "val_loss": self.val_loss.compute(),
+                **self.val_metrics.compute(),
+            },
+            step=self.global_step,
+        )
+
+    def on_fold_end(self) -> None:
+        """Reset fold."""
+        self.save_model()
+        self.global_step = 0
+        self.epoch = 0
+        self.fold += 1
+        wandb.join()
+
+    def save_model(self) -> None:
+        """Save model."""
+        traced_model = torch.jit.trace(
+            self.model.to("cpu").eval(), torch.randn(1, 1, 32000 * 5, device="cpu")
+        )
+        torch.jit.save(
+            traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"
+        )
+        self.model.cuda()
+
+    def on_epoch_end(self) -> None:
+        """Reset epoch."""
+        self.train_loss.reset()
+        self.val_loss.reset()
+        self.train_metrics.reset()
+        self.val_metrics.reset()
+        self.garbage_collection()
+        self.epoch += 1
+
+    @staticmethod
+    def garbage_collection() -> None:
+        """Garbage collection for cuda."""
+        gc.collect()
+        torch.cuda.empty_cache()

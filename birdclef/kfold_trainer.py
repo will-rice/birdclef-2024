@@ -25,7 +25,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 30,
+        num_epochs: int = 1,
         batch_size: int = 16,
         num_workers: int = 12,
         debug: bool = False,
@@ -185,9 +185,9 @@ class StratifiedKFoldTrainer:
 
     def save_model(self) -> None:
         """Save model."""
-        traced_model = torch.jit.trace(
-            self.model.to("cpu").eval().infer,
-            torch.randn(1, 1, 32000 * 5, device="cpu"),
+        traced_model = torch.jit.trace_module(
+            self.model.to("cpu").eval(),
+            {"infer": torch.randn(1, 1, 32000 * 5, device="cpu")},
         )
         torch.jit.save(
             traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"

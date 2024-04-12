@@ -21,7 +21,6 @@ class ConvNextV2Classifier(nn.Module):
         self.encoder = ConvNextV2Model.from_pretrained(
             "facebook/convnextv2-tiny-22k-224",
             drop_path_rate=0.2,
-            num_channels=1,
         )
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.encoder.config.hidden_sizes[-1], num_classes)
@@ -30,6 +29,14 @@ class ConvNextV2Classifier(nn.Module):
         self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass."""
+        x = self.normalize(x)
+        x = self.encoder(x, return_dict=False)[1]
+        x = self.dropout(x)
+        x = self.head(x)
+        return x
+
+    def infer(self, x: torch.Tensor) -> torch.Tensor:
+        """Inference pass."""
         with torch.no_grad():
             x = self.mel_fn(x)
             x = self.normalize(x)

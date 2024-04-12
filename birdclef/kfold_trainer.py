@@ -126,7 +126,7 @@ class StratifiedKFoldTrainer:
         """Train step."""
         self.model.train()
         self.optimizer.zero_grad(set_to_none=True)
-        logits = self.model(batch.audio.cuda(), batch.lengths.cuda())
+        logits = self.model(batch.specs.cuda(), batch.lengths.cuda())
         loss = self.loss_fn(logits, batch.label_id.cuda())
         loss.backward()
         self.optimizer.step()
@@ -159,7 +159,7 @@ class StratifiedKFoldTrainer:
         """Validate step."""
         self.model.eval()
         with torch.no_grad():
-            logits = self.model(batch.audio.cuda(), batch.lengths.cuda())
+            logits = self.model(batch.specs.cuda(), batch.lengths.cuda())
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())
         self.val_metrics.update(logits.softmax(dim=1).cpu(), batch.label_id)
@@ -186,7 +186,8 @@ class StratifiedKFoldTrainer:
     def save_model(self) -> None:
         """Save model."""
         traced_model = torch.jit.trace(
-            self.model.to("cpu").eval(), torch.randn(1, 1, 32000 * 5, device="cpu")
+            self.model.to("cpu").eval().infer,
+            torch.randn(1, 1, 32000 * 5, device="cpu"),
         )
         torch.jit.save(
             traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"

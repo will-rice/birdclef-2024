@@ -84,6 +84,7 @@ class StratifiedKFoldTrainer:
             train_sampler = SubsetRandomSampler(train_ids)
             val_sampler = SubsetRandomSampler(val_ids)
             self.dataset.transform = True
+            self.dataset.max_length = 32000 * 25
             train_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,
@@ -92,6 +93,7 @@ class StratifiedKFoldTrainer:
                 sampler=train_sampler,
             )
             self.dataset.transform = False
+            self.dataset.max_length = 32000 * 5
             val_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,

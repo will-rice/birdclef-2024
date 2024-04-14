@@ -33,7 +33,7 @@ class StratifiedKFoldTrainer:
         model: nn.Module,
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
-        num_folds: int = 5,
+        num_folds: int = 10,
         num_epochs: int = 30,
         batch_size: int = 16,
         num_workers: int = 12,
@@ -105,6 +105,7 @@ class StratifiedKFoldTrainer:
                 self.on_epoch_end()
             self.on_fold_end()
 
+        wandb.log({"cv_score": self.cv_score.compute()})
         wandb.finish()
 
     def on_fold_begin(self) -> None:
@@ -192,7 +193,6 @@ class StratifiedKFoldTrainer:
 
     def on_fold_end(self) -> None:
         """Reset fold."""
-        wandb.log({"cv_score": self.cv_score.compute()})
         self.save_model()
         self.global_step = 0
         self.epoch = 0

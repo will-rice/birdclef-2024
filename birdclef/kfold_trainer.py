@@ -13,6 +13,7 @@ from torchmetrics import (
     AUROC,
     Accuracy,
     AveragePrecision,
+    ExactMatch,
     F1Score,
     MetricCollection,
     Precision,
@@ -62,6 +63,7 @@ class StratifiedKFoldTrainer:
                 AUROC(task="multiclass", num_classes=182, average="macro"),
                 AveragePrecision(task="multiclass", num_classes=182, average="macro"),
                 F1Score(task="multiclass", num_classes=182, average="macro"),
+                ExactMatch(task="multiclass", num_classes=182),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")

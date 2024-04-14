@@ -34,7 +34,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 1,
+        num_epochs: int = 20,
         batch_size: int = 16,
         num_workers: int = 12,
         debug: bool = False,
@@ -175,7 +175,6 @@ class StratifiedKFoldTrainer:
         """Validate step."""
         self.model.eval()
         with torch.no_grad():
-            print(batch.audio.shape)
             logits = self.model(batch.specs.cuda(), batch.lengths.cuda())
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())

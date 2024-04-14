@@ -19,7 +19,7 @@ class ConvNextV2Classifier(nn.Module):
         self.mel_fn = MelSpectrogram()
         self.normalize = v2.Normalize(IMAGENET_STANDARD_MEAN, IMAGENET_STANDARD_STD)
         self.encoder = ConvNextV2Model.from_pretrained(
-            "facebook/convnextv2-base-22k-224",
+            "facebook/convnextv2-tiny-22k-224",
             drop_path_rate=0.2,
         )
         self.dropout = nn.Dropout(dropout)
@@ -29,6 +29,11 @@ class ConvNextV2Classifier(nn.Module):
         self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass."""
+        x = torch.nn.functional.interpolate(
+            x,
+            size=(self.encoder.config.image_size, self.encoder.config.image_size),
+            mode="bilinear",
+        )
         x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[1]
         x = self.dropout(x)

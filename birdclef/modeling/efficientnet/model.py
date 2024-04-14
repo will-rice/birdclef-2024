@@ -20,7 +20,7 @@ class EfficientNetClassifier(nn.Module):
         self.normalize = v2.Normalize(IMAGENET_STANDARD_MEAN, IMAGENET_STANDARD_STD)
         self.encoder = EfficientNetModel.from_pretrained("google/efficientnet-b0")
         self.dropout = nn.Dropout(dropout)
-        self.head = nn.Linear(self.encoder.config.hidden_sizes[-1], num_classes)
+        self.head = nn.Linear(self.encoder.config.hidden_dim, num_classes)
 
     def forward(
         self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None

@@ -181,7 +181,7 @@ class StratifiedKFoldTrainer:
     def on_validate_end(self) -> None:
         """On validate end."""
         val_metrics = self.val_metrics.compute()
-        self.cv_score.update(val_metrics["val_MultiClassAUROC"])
+        self.cv_score.update(val_metrics["val_MulticlassAUROC"])
         wandb.log(
             {
                 "val_loss": self.val_loss.compute(),

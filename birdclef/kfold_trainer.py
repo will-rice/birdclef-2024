@@ -9,7 +9,16 @@ import wandb
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from torchmetrics import AUROC, Accuracy, MetricCollection, Precision, Recall
+from torchmetrics import (
+    AUROC,
+    Accuracy,
+    AveragePrecision,
+    ExactMatch,
+    F1Score,
+    MetricCollection,
+    Precision,
+    Recall,
+)
 from torchmetrics.aggregation import MeanMetric
 from tqdm import tqdm
 
@@ -24,7 +33,7 @@ class StratifiedKFoldTrainer:
         model: nn.Module,
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
-        num_folds: int = 10,
+        num_folds: int = 5,
         num_epochs: int = 30,
         batch_size: int = 16,
         num_workers: int = 12,
@@ -45,12 +54,16 @@ class StratifiedKFoldTrainer:
         self.loss_fn = nn.CrossEntropyLoss()
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
+        self.cv_score = MeanMetric()
         metrics = MetricCollection(
             [
                 Accuracy(task="multiclass", num_classes=182, average="macro"),
                 Precision(task="multiclass", num_classes=182, average="macro"),
                 Recall(task="multiclass", num_classes=182, average="macro"),
                 AUROC(task="multiclass", num_classes=182, average="macro"),
+                AveragePrecision(task="multiclass", num_classes=182, average="macro"),
+                F1Score(task="multiclass", num_classes=182, average="macro"),
+                ExactMatch(task="multiclass", num_classes=182, average="macro"),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")
@@ -167,6 +180,8 @@ class StratifiedKFoldTrainer:
 
     def on_validate_end(self) -> None:
         """On validate end."""
+        val_metrics = self.val_metrics.compute()
+        self.cv_score.update(val_metrics["val_MultiClassAUROC"])
         wandb.log(
             {
                 "val_loss": self.val_loss.compute(),
@@ -177,6 +192,7 @@ class StratifiedKFoldTrainer:
 
     def on_fold_end(self) -> None:
         """Reset fold."""
+        wandb.log({"cv_score": self.cv_score.compute()})
         self.save_model()
         self.global_step = 0
         self.epoch = 0

@@ -33,7 +33,7 @@ class StratifiedKFoldTrainer:
         model: nn.Module,
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
-        num_folds: int = 10,
+        num_folds: int = 5,
         num_epochs: int = 30,
         batch_size: int = 16,
         num_workers: int = 12,

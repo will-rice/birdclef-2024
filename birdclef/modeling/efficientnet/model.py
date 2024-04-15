@@ -18,7 +18,7 @@ class EfficientNetClassifier(nn.Module):
         super().__init__()
         self.mel_fn = MelSpectrogram()
         self.normalize = v2.Normalize(IMAGENET_STANDARD_MEAN, IMAGENET_STANDARD_STD)
-        self.encoder = EfficientNetModel.from_pretrained("google/efficientnet-b0")
+        self.encoder = EfficientNetModel.from_pretrained("google/efficientnet-b1")
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.encoder.config.hidden_dim, num_classes)
 

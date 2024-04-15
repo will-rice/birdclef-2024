@@ -107,7 +107,6 @@ class StratifiedKFoldTrainer:
                 self.on_epoch_end()
             self.on_fold_end()
 
-        wandb.log({"cv_score": self.cv_score.compute()})
         wandb.finish()
 
     def on_fold_begin(self) -> None:
@@ -195,6 +194,8 @@ class StratifiedKFoldTrainer:
 
     def on_fold_end(self) -> None:
         """Reset fold."""
+        wandb.log({"cv_score": self.cv_score.compute()})
+        self.cv_score.reset()
         self.save_model()
         self.global_step = 0
         self.epoch = 0

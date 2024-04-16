@@ -12,7 +12,6 @@ from audiomentations import (
     AddGaussianNoise,
     Compose,
     Gain,
-    Mp3Compression,
     PitchShift,
     PolarityInversion,
     Reverse,
@@ -55,7 +54,6 @@ class BirdCLEF2024Dataset(Dataset):
                 AddColorNoise(p=0.5),
                 Shift(p=0.5),
                 TimeMask(p=0.5),
-                Mp3Compression(p=0.5),
                 Reverse(p=0.5),
                 PitchShift(min_semitones=-5.0, max_semitones=5.0, p=0.5),
             ]

@@ -26,11 +26,6 @@ class EfficientNetClassifier(nn.Module):
         self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass."""
-        x = torch.nn.functional.interpolate(
-            x,
-            size=(self.encoder.config.image_size, self.encoder.config.image_size),
-            mode="bilinear",
-        )
         x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[1]
         x = self.dropout(x)
@@ -41,11 +36,6 @@ class EfficientNetClassifier(nn.Module):
         """Inference pass."""
         with torch.no_grad():
             x = self.mel_fn(x)
-            x = torch.nn.functional.interpolate(
-                x,
-                size=(self.encoder.config.image_size, self.encoder.config.image_size),
-                mode="bilinear",
-            )
             x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[1]
         x = self.dropout(x)

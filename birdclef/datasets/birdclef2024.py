@@ -86,11 +86,11 @@ class BirdCLEF2024Dataset(Dataset):
 
         spec = self.mel_fn(audio)
 
-        # if self.transform:
-        # Apply augmentation
-        # audio = self.waveform_augmentations(audio.numpy(), sample_rate=32000)
-        # audio = torch.from_numpy(audio.copy())
-        # spec = self.spec_augmentations(spec)
+        if self.transform:
+            # Apply augmentation
+            # audio = self.waveform_augmentations(audio.numpy(), sample_rate=32000)
+            # audio = torch.from_numpy(audio.copy())
+            spec = self.spec_augmentations(spec)
 
         label_id = self.label_map[sample.primary_label]
 

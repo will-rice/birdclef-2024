@@ -4,6 +4,7 @@ import gc
 from copy import deepcopy
 from pathlib import Path
 
+import kagglehub
 import torch
 import wandb
 from sklearn.model_selection import StratifiedKFold
@@ -210,6 +211,11 @@ class StratifiedKFoldTrainer:
         )
         torch.jit.save(
             traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"
+        )
+        kagglehub.model_upload(
+            f"will-rice/{self.log_path.name}/pyTorch/{self.fold}",
+            str(self.log_path / f"{self.log_path.name}_{self.fold}.pt"),
+            "Apache 2.0",
         )
         self.model.cuda()
 

@@ -213,7 +213,7 @@ class StratifiedKFoldTrainer:
             traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"
         )
         kagglehub.model_upload(
-            f"will-rice/{self.log_path.name}/pyTorch/{self.fold}",
+            f"willrice/{self.log_path.name}/pyTorch/{self.fold}",
             str(self.log_path / f"{self.log_path.name}_{self.fold}.pt"),
             "Apache 2.0",
         )

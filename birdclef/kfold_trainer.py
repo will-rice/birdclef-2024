@@ -35,7 +35,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 1,
+        num_epochs: int = 30,
         batch_size: int = 16,
         num_workers: int = 12,
         debug: bool = False,
@@ -213,7 +213,7 @@ class StratifiedKFoldTrainer:
             traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"
         )
         kagglehub.model_upload(
-            f"willrice/{self.log_path.name}/pyTorch/{self.fold}",
+            f"willrice/{self.log_path.name}/pyTorch/fold-{self.fold}",
             str(self.log_path / f"{self.log_path.name}_{self.fold}.pt"),
             "Apache 2.0",
         )

@@ -196,8 +196,8 @@ class StratifiedKFoldTrainer:
     def on_fold_end(self) -> None:
         """Reset fold."""
         wandb.log({"cv_score": self.cv_score.compute()})
-        self.cv_score.reset()
         self.save_model()
+        self.cv_score.reset()
         self.global_step = 0
         self.epoch = 0
         self.fold += 1
@@ -210,7 +210,9 @@ class StratifiedKFoldTrainer:
             {"infer": torch.randn(1, 1, 32000 * 5, device="cpu")},
         )
         torch.jit.save(
-            traced_model, self.log_path / f"{self.log_path.name}_{self.fold}.pt"
+            traced_model,
+            self.log_path
+            / f"{self.log_path.name}_{self.fold}_{self.cv_score.compute():.4f}.pt",
         )
         kagglehub.model_upload(
             f"willrice/{self.log_path.name}/pyTorch/fold-{self.fold}",

@@ -35,7 +35,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 35,
+        num_epochs: int = 40,
         batch_size: int = 16,
         num_workers: int = 12,
         debug: bool = False,
@@ -209,14 +209,12 @@ class StratifiedKFoldTrainer:
             self.model.to("cpu").eval(),
             {"infer": torch.randn(1, 1, 32000 * 5, device="cpu")},
         )
-        torch.jit.save(
-            traced_model,
-            self.log_path
-            / f"{self.log_path.name}_{self.fold}_{self.cv_score.compute():.4f}.pt",
-        )
+        model_name = f"{self.log_path.name}_{self.fold}_{self.cv_score.compute():.4f}"
+        save_path = self.log_path / f"{model_name}.pt"
+        torch.jit.save(traced_model, self.log_path / save_path)
         kagglehub.model_upload(
             f"willrice/{self.log_path.name}/pyTorch/fold-{self.fold}",
-            str(self.log_path / f"{self.log_path.name}_{self.fold}.pt"),
+            str(self.log_path / save_path),
             "Apache 2.0",
         )
         self.model.cuda()

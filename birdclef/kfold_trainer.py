@@ -211,7 +211,7 @@ class StratifiedKFoldTrainer:
         )
         model_name = f"{self.log_path.name}_{self.fold}_{self.cv_score.compute():.4f}"
         save_path = self.log_path / f"{model_name}.pt"
-        torch.jit.save(traced_model, self.log_path / save_path)
+        torch.jit.save(traced_model, save_path)
         kagglehub.model_upload(
             f"willrice/{self.log_path.name}/pyTorch/fold-{self.fold}",
             str(self.log_path / save_path),

@@ -19,7 +19,7 @@ class EfficientViTClassifier(nn.Module):
         self.normalize = v2.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
         self.encoder = timm.create_model(
-            "efficientvit_b1.r224_in1k",
+            "efficientvit_b0.r224_in1k",
             pretrained=True,
             num_classes=num_classes,
             drop_rate=dropout,

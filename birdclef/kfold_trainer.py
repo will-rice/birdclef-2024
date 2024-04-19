@@ -52,7 +52,7 @@ class StratifiedKFoldTrainer:
         self.num_workers = num_workers
         self.debug = debug
         self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
-        self.loss_fn = nn.CrossEntropyLoss(label_smoothing=0.0)
+        self.loss_fn = nn.CrossEntropyLoss(label_smoothing=0.2)
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.cv_score = MeanMetric()

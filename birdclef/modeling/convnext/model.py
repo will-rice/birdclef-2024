@@ -19,7 +19,7 @@ class ConvNextV2Classifier(nn.Module):
         self.mel_fn = MelSpectrogram()
         self.normalize = v2.Normalize(IMAGENET_STANDARD_MEAN, IMAGENET_STANDARD_STD)
         self.encoder = ConvNextV2Model.from_pretrained(
-            "facebook/convnextv2-tiny-22k-224",
+            "facebook/convnextv2-tiny-1k-224",
             drop_path_rate=0.2,
         )
         self.dropout = nn.Dropout(dropout)

@@ -214,7 +214,7 @@ class StratifiedKFoldTrainer:
         torch.jit.save(traced_model, save_path)
         kagglehub.model_upload(
             f"willrice/{self.log_path.name}/pyTorch/fold-{self.fold}",
-            str(self.log_path / save_path),
+            str(save_path),
             "Apache 2.0",
         )
         self.model.cuda()

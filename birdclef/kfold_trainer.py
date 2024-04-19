@@ -74,6 +74,9 @@ class StratifiedKFoldTrainer:
         self.epoch = 0
         self.model = self.models[self.fold]
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        self.ema_model = torch.optim.swa_utils.AveragedModel(
+            self.model, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999)
+        )
 
     def fit(self) -> None:
         """Train the model."""
@@ -114,6 +117,9 @@ class StratifiedKFoldTrainer:
         """Start fold."""
         self.model = self.models[self.fold]
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        self.ema_model = torch.optim.swa_utils.AveragedModel(
+            self.model, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999)
+        )
 
         wandb.init(
             project="birdclef-2024",
@@ -146,6 +152,7 @@ class StratifiedKFoldTrainer:
         loss = self.loss_fn(logits, batch.label_id.cuda())
         loss.backward()
         self.optimizer.step()
+        self.ema_model.update(self.model)
         train_loss = self.train_loss(loss.cpu())
         metrics = self.train_metrics(logits.softmax(dim=1).cpu(), batch.label_id)
         wandb.log({"train_loss": train_loss, **metrics}, step=self.global_step)
@@ -173,9 +180,9 @@ class StratifiedKFoldTrainer:
 
     def validate_step(self, batch: Batch) -> torch.Tensor:
         """Validate step."""
-        self.model.eval()
+        self.ema_model.eval()
         with torch.no_grad():
-            logits = self.model(batch.specs.cuda(), batch.lengths.cuda())
+            logits = self.ema_model(batch.specs.cuda(), batch.lengths.cuda())
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())
         self.val_metrics.update(logits.softmax(dim=1).cpu(), batch.label_id)
@@ -206,7 +213,7 @@ class StratifiedKFoldTrainer:
     def save_model(self) -> None:
         """Save model."""
         traced_model = torch.jit.trace_module(
-            self.model.to("cpu").eval(),
+            self.ema_model.to("cpu").eval(),
             {"infer": torch.randn(1, 1, 32000 * 5, device="cpu")},
         )
         model_name = f"{self.log_path.name}_{self.fold}_{self.cv_score.compute():.4f}"
@@ -217,7 +224,7 @@ class StratifiedKFoldTrainer:
             str(save_path),
             "Apache 2.0",
         )
-        self.model.cuda()
+        self.ema_model.cuda()
 
     def on_epoch_end(self) -> None:
         """Reset epoch."""

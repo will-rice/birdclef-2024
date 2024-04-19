@@ -152,7 +152,7 @@ class StratifiedKFoldTrainer:
         loss = self.loss_fn(logits, batch.label_id.cuda())
         loss.backward()
         self.optimizer.step()
-        self.ema_model.update(self.model)
+        self.ema_model.update_parameters(self.model)
         train_loss = self.train_loss(loss.cpu())
         metrics = self.train_metrics(logits.softmax(dim=1).cpu(), batch.label_id)
         wandb.log({"train_loss": train_loss, **metrics}, step=self.global_step)

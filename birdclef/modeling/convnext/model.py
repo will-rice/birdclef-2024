@@ -26,20 +26,15 @@ class ConvNextV2Classifier(nn.Module):
         self.head = nn.Linear(self.encoder.config.hidden_sizes[-1], num_classes)
 
     def forward(
-        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
+        self,
+        x: torch.Tensor,
+        lengths: Optional[torch.Tensor] = None,
+        from_audio: bool = True,
     ) -> torch.Tensor:
         """Forward pass."""
-        x = self.normalize(x)
-        x = self.encoder(x, return_dict=False)[1]
-        x = self.dropout(x)
-        x = self.head(x)
-        return x
-
-    def infer(self, x: torch.Tensor) -> torch.Tensor:
-        """Inference pass."""
-        with torch.no_grad():
+        if from_audio:
             x = self.mel_fn(x)
-            x = self.normalize(x)
+        x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[1]
         x = self.dropout(x)
         x = self.head(x)

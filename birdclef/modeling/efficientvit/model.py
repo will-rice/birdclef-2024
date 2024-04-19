@@ -26,20 +26,15 @@ class EfficientViTClassifier(nn.Module):
         )
 
     def forward(
-        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
+        self,
+        x: torch.Tensor,
+        lengths: Optional[torch.Tensor] = None,
+        from_audio: bool = True,
     ) -> torch.Tensor:
         """Forward pass."""
         with torch.no_grad():
-            x = self.normalize(x)
-        x = self.encoder(x)
-        return x
-
-    def infer(
-        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        """Forward pass."""
-        with torch.no_grad():
-            x = self.mel_fn(x)
+            if from_audio:
+                x = self.mel_fn(x)
             x = self.normalize(x)
         x = self.encoder(x)
         return x

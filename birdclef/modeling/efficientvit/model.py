@@ -30,6 +30,15 @@ class EfficientViTClassifier(nn.Module):
     ) -> torch.Tensor:
         """Forward pass."""
         with torch.no_grad():
+            x = self.normalize(x)
+        x = self.encoder(x)
+        return x
+
+    def infer(
+        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """Forward pass."""
+        with torch.no_grad():
             x = self.mel_fn(x)
             x = self.normalize(x)
         x = self.encoder(x)

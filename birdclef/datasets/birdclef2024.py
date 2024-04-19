@@ -80,9 +80,6 @@ class BirdCLEF2024Dataset(Dataset):
             diff = self.max_length // audio.shape[1] + 1
             audio = audio.repeat(1, diff)
             audio = audio[:, : self.max_length]
-        elif self.max_length == 32000 * 5:
-            start_idx = 0
-            audio = audio[:, start_idx : start_idx + self.max_length]
         else:
             start_idx = random.randint(0, audio.shape[1] - self.max_length)
             audio = audio[:, start_idx : start_idx + self.max_length]

@@ -46,7 +46,7 @@ class BirdCLEF2024Dataset(Dataset):
             v: k for k, v in enumerate(sorted(self.metadata.primary_label.unique()))
         }
         self.labels = list(self.label_map.keys())
-        self.max_length = 32000 * 30
+        self.max_length = 32000 * 5
         self.waveform_augmentations = Compose(
             transforms=[
                 Gain(p=0.5),
@@ -58,7 +58,9 @@ class BirdCLEF2024Dataset(Dataset):
                 TimeMask(p=0.5),
                 Reverse(p=0.5),
                 PitchShift(min_semitones=-5.0, max_semitones=5.0, p=0.5),
-            ]
+            ],
+            p=0.5,
+            shuffle=True,
         )
         self.spec_augmentations = nn.Sequential(
             SpecFreqMask(num_masks=3, size=10, p=0.3),
@@ -88,11 +90,11 @@ class BirdCLEF2024Dataset(Dataset):
 
         spec = self.mel_fn(audio)
 
-        if self.transform:
-            # Apply augmentation
-            audio = self.waveform_augmentations(audio.numpy(), sample_rate=32000)
-            audio = torch.from_numpy(audio.copy())
-            spec = self.spec_augmentations(spec)
+        # if self.transform:
+        # Apply augmentation
+        #     audio = self.waveform_augmentations(audio.numpy(), sample_rate=32000)
+        #    audio = torch.from_numpy(audio.copy())
+        #    spec = self.spec_augmentations(spec)
 
         label_id = self.label_map[sample.primary_label]
 

@@ -22,6 +22,7 @@ class ConvNextV2Classifier(nn.Module):
             "facebook/convnextv2-tiny-22k-224",
             drop_path_rate=0.2,
         )
+        self.image_size = self.encoder.config.image_size
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.encoder.config.hidden_sizes[-1], num_classes)
 
@@ -34,6 +35,9 @@ class ConvNextV2Classifier(nn.Module):
         """Forward pass."""
         if from_audio:
             x = self.mel_fn(x)
+        x = nn.functional.interpolate(
+            x, size=(self.image_size, self.image_size), mode="bilinear"
+        )
         x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[1]
         x = self.dropout(x)

@@ -38,6 +38,7 @@ class StratifiedKFoldTrainer:
         num_epochs: int = 50,
         batch_size: int = 16,
         num_workers: int = 12,
+        learning_rate: float = 1e-4,
         debug: bool = False,
     ) -> None:
         self.models = [deepcopy(model) for _ in range(num_folds)]
@@ -50,6 +51,7 @@ class StratifiedKFoldTrainer:
         self.num_epochs = num_epochs
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.learning_rate = learning_rate
         self.debug = debug
         self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
         self.loss_fn = nn.CrossEntropyLoss(label_smoothing=0.2)
@@ -73,7 +75,9 @@ class StratifiedKFoldTrainer:
         self.fold = 0
         self.epoch = 0
         self.model = self.models[self.fold]
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(), lr=self.learning_rate
+        )
         self.ema_model = torch.optim.swa_utils.AveragedModel(
             self.model, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999)
         )
@@ -87,7 +91,7 @@ class StratifiedKFoldTrainer:
 
             train_sampler = SubsetRandomSampler(train_ids)
             val_sampler = SubsetRandomSampler(val_ids)
-            self.dataset.transform = False
+            self.dataset.transform = True
             train_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,
@@ -114,7 +118,9 @@ class StratifiedKFoldTrainer:
     def on_fold_begin(self) -> None:
         """Start fold."""
         self.model = self.models[self.fold]
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(), lr=self.learning_rate
+        )
         self.ema_model = torch.optim.swa_utils.AveragedModel(
             self.model, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999)
         )

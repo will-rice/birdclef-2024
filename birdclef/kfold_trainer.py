@@ -35,7 +35,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 30,
+        num_epochs: int = 100,
         batch_size: int = 16,
         num_workers: int = 12,
         debug: bool = False,
@@ -88,7 +88,6 @@ class StratifiedKFoldTrainer:
             train_sampler = SubsetRandomSampler(train_ids)
             val_sampler = SubsetRandomSampler(val_ids)
             self.dataset.transform = True
-            self.dataset.max_length = 32000 * 5
             train_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,
@@ -97,7 +96,6 @@ class StratifiedKFoldTrainer:
                 sampler=train_sampler,
             )
             self.dataset.transform = False
-            self.dataset.max_length = 32000 * 5
             val_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,

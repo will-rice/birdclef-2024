@@ -146,7 +146,7 @@ class StratifiedKFoldTrainer:
         """Train step."""
         self.model.train()
         self.optimizer.zero_grad(set_to_none=True)
-        logits = self.model(batch.specs.cuda(), batch.lengths.cuda(), from_audio=False)
+        logits = self.model(batch.specs.cuda(), from_audio=False)
         loss = self.loss_fn(logits, batch.label_id.cuda())
         loss.backward()
         self.optimizer.step()
@@ -180,9 +180,7 @@ class StratifiedKFoldTrainer:
         """Validate step."""
         self.ema_model.eval()
         with torch.no_grad():
-            logits = self.ema_model(
-                batch.specs.cuda(), batch.lengths.cuda(), from_audio=False
-            )
+            logits = self.ema_model(batch.specs.cuda(), from_audio=False)
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())
         self.val_metrics.update(logits.softmax(dim=1).cpu(), batch.label_id)

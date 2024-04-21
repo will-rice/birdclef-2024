@@ -1,7 +1,5 @@
 """ConvNext model definition."""
 
-from typing import Optional
-
 import torch
 from torch import nn
 from torchvision.transforms import v2
@@ -24,13 +22,11 @@ class EfficientFormerClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.encoder.config.hidden_sizes[-1], num_classes)
 
-    def forward(
-        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, from_audio: bool = True) -> torch.Tensor:
         """Forward pass."""
-        with torch.no_grad():
+        if from_audio:
             x = self.mel_fn(x)
-            x = self.normalize(x)
+        x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[0]
         x = x.mean(1)
         x = self.dropout(x)

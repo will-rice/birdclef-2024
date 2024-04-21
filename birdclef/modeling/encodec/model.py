@@ -1,13 +1,10 @@
 """Encodec based classifier model."""
 
-from typing import Optional
-
 import torch
 import torchaudio
 from torch import nn
 from transformers import AutoModel, T5Config, T5EncoderModel
 
-from birdclef import utils
 from birdclef.modeling.modules import AvgPool
 
 
@@ -44,26 +41,13 @@ class EncodecClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.lm.config.hidden_size, num_classes)
 
-    def forward(
-        self, x: torch.Tensor, lengths: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
         x = self.resample(x)
-        codec_masks = (
-            utils.sequence_mask(lengths, x.size(1)) if lengths is not None else None
-        )
 
         with torch.no_grad():
-            x = self.encoder.encode(x, padding_mask=codec_masks, return_dict=False)[0][
-                0
-            ].sum(1)
-
-        attn_masks = (
-            utils.sequence_mask(lengths // 320, x.size(1))
-            if lengths is not None
-            else None
-        )
-        x = self.lm(x, attention_mask=attn_masks, return_dict=False)[0]
+            x = self.encoder.encode(x, return_dict=False)[0][0].sum(1)
+        x = self.lm(x, return_dict=False)[0]
         x = self.pool(x)
         x = self.dropout(x)
         x = self.head(x)

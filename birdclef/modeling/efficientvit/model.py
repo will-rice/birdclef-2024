@@ -1,7 +1,5 @@
 """ConvNext model definition."""
 
-from typing import Optional
-
 import timm
 import torch
 from torch import nn
@@ -25,12 +23,7 @@ class EfficientViTClassifier(nn.Module):
             drop_rate=dropout,
         )
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        lengths: Optional[torch.Tensor] = None,
-        from_audio: bool = True,
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, from_audio: bool = True) -> torch.Tensor:
         """Forward pass."""
         with torch.no_grad():
             if from_audio:

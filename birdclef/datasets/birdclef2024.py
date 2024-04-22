@@ -99,7 +99,7 @@ class BirdCLEF2024Dataset(Dataset):
         label_id = torch.tensor(self.label_map[sample.primary_label])
         label_one_hot = torch.nn.functional.one_hot(
             label_id, num_classes=len(self.labels)
-        )
+        ).float()
 
         return Batch(
             audio=audio,

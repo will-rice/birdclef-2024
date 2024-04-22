@@ -158,7 +158,7 @@ class StratifiedKFoldTrainer:
         self.optimizer.step()
         self.ema_model.update_parameters(self.model)
         train_loss = self.train_loss(loss.cpu())
-        metrics = self.train_metrics(logits.sigmoid().cpu(), batch.label_id)
+        metrics = self.train_metrics(logits.sigmoid().cpu(), batch.label_id.int())
         wandb.log({"train_loss": train_loss, **metrics}, step=self.global_step)
         return train_loss
 
@@ -189,13 +189,13 @@ class StratifiedKFoldTrainer:
             logits = self.ema_model(batch.specs.cuda(), from_audio=False)
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())
-        self.val_metrics.update(logits.sigmoid().cpu(), batch.label_id)
+        self.val_metrics.update(logits.sigmoid().cpu(), batch.label_id.int())
         return val_loss
 
     def on_validate_end(self) -> None:
         """On validate end."""
         val_metrics = self.val_metrics.compute()
-        self.cv_score.update(val_metrics["val_MulticlassAUROC"])
+        self.cv_score.update(val_metrics["val_MultilabelAUROC"])
         wandb.log(
             {
                 "val_loss": self.val_loss.compute(),

@@ -64,42 +64,35 @@ class StratifiedKFoldTrainer:
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 Precision(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 Recall(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 AUROC(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 AveragePrecision(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 F1Score(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
                     average="macro",
-                    threshold=0.5,
                 ),
                 ExactMatch(
                     task="multilabel",
                     num_labels=len(self.dataset.labels),
-                    threshold=0.5,
                 ),
             ]
         )

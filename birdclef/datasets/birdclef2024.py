@@ -96,11 +96,14 @@ class BirdCLEF2024Dataset(Dataset):
             audio = torch.from_numpy(audio.copy())
             spec = self.spec_augmentations(spec)
 
-        label_id = self.label_map[sample.primary_label]
+        label_id = torch.tensor(self.label_map[sample.primary_label])
+        label_one_hot = torch.nn.functional.one_hot(
+            label_id, num_classes=len(self.labels)
+        )
 
         return Batch(
             audio=audio,
             specs=spec,
-            label_id=torch.tensor(label_id),
+            label_id=label_one_hot,
             lengths=torch.tensor(audio_length),
         )

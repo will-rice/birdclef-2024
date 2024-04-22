@@ -60,13 +60,47 @@ class StratifiedKFoldTrainer:
         self.cv_score = MeanMetric()
         metrics = MetricCollection(
             [
-                Accuracy(task="multilabel", num_labels=182, average="macro"),
-                Precision(task="multilabel", num_labels=182, average="macro"),
-                Recall(task="multilabel", num_labels=182, average="macro"),
-                AUROC(task="multilabel", num_labels=182, average="macro"),
-                AveragePrecision(task="multilabel", num_labels=182, average="macro"),
-                F1Score(task="multilabel", num_labels=182, average="macro"),
-                ExactMatch(task="multilabel", num_labels=182),
+                Accuracy(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                Precision(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                Recall(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                AUROC(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                AveragePrecision(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                F1Score(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    average="macro",
+                    threshold=0.5,
+                ),
+                ExactMatch(
+                    task="multilabel",
+                    num_labels=len(self.dataset.labels),
+                    threshold=0.5,
+                ),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")
@@ -91,7 +125,7 @@ class StratifiedKFoldTrainer:
 
             train_sampler = SubsetRandomSampler(train_ids)
             val_sampler = SubsetRandomSampler(val_ids)
-            self.dataset.transform = False
+            self.dataset.transform = True
             train_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,

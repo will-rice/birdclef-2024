@@ -45,7 +45,7 @@ class BirdCLEF2024Dataset(Dataset):
         self.label_map = {
             v: k for k, v in enumerate(sorted(self.metadata.primary_label.unique()))
         }
-        self.labels = list(self.label_map.keys())
+        self.labels = list(self.label_map.keys()) + ["nocall"]
         self.max_length = 32000 * 5
         self.waveform_augmentations = Compose(
             transforms=[

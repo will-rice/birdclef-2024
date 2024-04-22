@@ -24,6 +24,7 @@ from torchmetrics.aggregation import MeanMetric
 from tqdm import tqdm
 
 from birdclef.datasets.birdclef2024 import Batch, BirdCLEF2024Dataset
+from birdclef.losses import FocalLoss
 
 
 class StratifiedKFoldTrainer:
@@ -54,7 +55,7 @@ class StratifiedKFoldTrainer:
         self.learning_rate = learning_rate
         self.debug = debug
         self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
-        self.loss_fn = nn.BCEWithLogitsLoss()
+        self.loss_fn = FocalLoss()
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.cv_score = MeanMetric()

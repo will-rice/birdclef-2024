@@ -91,7 +91,7 @@ class StratifiedKFoldTrainer:
 
             train_sampler = SubsetRandomSampler(train_ids)
             val_sampler = SubsetRandomSampler(val_ids)
-            self.dataset.transform = True
+            self.dataset.transform = False
             train_loader = DataLoader(
                 self.dataset,
                 batch_size=self.batch_size,

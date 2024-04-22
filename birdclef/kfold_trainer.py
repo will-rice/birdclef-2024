@@ -54,19 +54,19 @@ class StratifiedKFoldTrainer:
         self.learning_rate = learning_rate
         self.debug = debug
         self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
-        self.loss_fn = nn.CrossEntropyLoss(label_smoothing=0.2)
+        self.loss_fn = nn.BCEWithLogitsLoss()
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.cv_score = MeanMetric()
         metrics = MetricCollection(
             [
-                Accuracy(task="multiclass", num_classes=182, average="macro"),
-                Precision(task="multiclass", num_classes=182, average="macro"),
-                Recall(task="multiclass", num_classes=182, average="macro"),
-                AUROC(task="multiclass", num_classes=182, average="macro"),
-                AveragePrecision(task="multiclass", num_classes=182, average="macro"),
-                F1Score(task="multiclass", num_classes=182, average="macro"),
-                ExactMatch(task="multiclass", num_classes=182),
+                Accuracy(task="multilabel", num_classes=182, average="macro"),
+                Precision(task="multilabel", num_classes=182, average="macro"),
+                Recall(task="multilabel", num_classes=182, average="macro"),
+                AUROC(task="multilabel", num_classes=182, average="macro"),
+                AveragePrecision(task="multilabel", num_classes=182, average="macro"),
+                F1Score(task="multilabel", num_classes=182, average="macro"),
+                ExactMatch(task="multilabel", num_classes=182),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")
@@ -158,7 +158,7 @@ class StratifiedKFoldTrainer:
         self.optimizer.step()
         self.ema_model.update_parameters(self.model)
         train_loss = self.train_loss(loss.cpu())
-        metrics = self.train_metrics(logits.softmax(dim=1).cpu(), batch.label_id)
+        metrics = self.train_metrics(logits.sigmoid(dim=1).cpu(), batch.label_id)
         wandb.log({"train_loss": train_loss, **metrics}, step=self.global_step)
         return train_loss
 
@@ -189,7 +189,7 @@ class StratifiedKFoldTrainer:
             logits = self.ema_model(batch.specs.cuda(), from_audio=False)
         loss = self.loss_fn(logits, batch.label_id.cuda())
         val_loss = self.val_loss(loss.cpu())
-        self.val_metrics.update(logits.softmax(dim=1).cpu(), batch.label_id)
+        self.val_metrics.update(logits.sigmoid(dim=1).cpu(), batch.label_id)
         return val_loss
 
     def on_validate_end(self) -> None:

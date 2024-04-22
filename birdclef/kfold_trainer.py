@@ -60,13 +60,13 @@ class StratifiedKFoldTrainer:
         self.cv_score = MeanMetric()
         metrics = MetricCollection(
             [
-                Accuracy(task="multilabel", num_classes=182, average="macro"),
-                Precision(task="multilabel", num_classes=182, average="macro"),
-                Recall(task="multilabel", num_classes=182, average="macro"),
-                AUROC(task="multilabel", num_classes=182, average="macro"),
-                AveragePrecision(task="multilabel", num_classes=182, average="macro"),
-                F1Score(task="multilabel", num_classes=182, average="macro"),
-                ExactMatch(task="multilabel", num_classes=182),
+                Accuracy(task="multilabel", num_labels=182, average="macro"),
+                Precision(task="multilabel", num_labels=182, average="macro"),
+                Recall(task="multilabel", num_labels=182, average="macro"),
+                AUROC(task="multilabel", num_labels=182, average="macro"),
+                AveragePrecision(task="multilabel", num_labels=182, average="macro"),
+                F1Score(task="multilabel", num_labels=182, average="macro"),
+                ExactMatch(task="multilabel", num_labels=182),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")

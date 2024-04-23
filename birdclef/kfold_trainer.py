@@ -36,7 +36,7 @@ class StratifiedKFoldTrainer:
         dataset: BirdCLEF2024Dataset,
         log_path: Path,
         num_folds: int = 5,
-        num_epochs: int = 30,
+        num_epochs: int = 100,
         batch_size: int = 16,
         num_workers: int = 12,
         learning_rate: float = 1e-4,

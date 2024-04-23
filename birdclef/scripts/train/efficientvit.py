@@ -34,9 +34,9 @@ def main() -> None:
     log_path = args.log_path / args.name
     log_path.mkdir(exist_ok=True, parents=True)
 
-    model = EfficientViTClassifier()
-
     dataset = BirdCLEF2024Dataset(args.data_root)
+
+    model = EfficientViTClassifier(num_classes=len(dataset.labels))
 
     if args.weights_path:
         model.load_state_dict(torch.load(args.weights_path), strict=True)

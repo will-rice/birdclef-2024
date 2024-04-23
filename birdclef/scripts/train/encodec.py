@@ -30,12 +30,13 @@ def main() -> None:
     parser.add_argument("--num_devices", default=1, type=int)
     parser.add_argument("--ckpt_path", type=Path, default=None)
     parser.add_argument("--weights_path", type=Path, default=None)
+    parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--overfit", action="store_true")
 
     args = parser.parse_args()
 
-    seed_everything(1234)
+    seed_everything(args.seed)
 
     log_path = args.log_path / args.name
     log_path.mkdir(exist_ok=True, parents=True)

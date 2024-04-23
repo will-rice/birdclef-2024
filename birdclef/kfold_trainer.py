@@ -40,6 +40,7 @@ class StratifiedKFoldTrainer:
         batch_size: int = 16,
         num_workers: int = 12,
         learning_rate: float = 1e-4,
+        seed: int = 1234,
         debug: bool = False,
     ) -> None:
         self.models = [deepcopy(model) for _ in range(num_folds)]
@@ -54,7 +55,9 @@ class StratifiedKFoldTrainer:
         self.num_workers = num_workers
         self.learning_rate = learning_rate
         self.debug = debug
-        self.splitter = StratifiedKFold(n_splits=num_folds, shuffle=True)
+        self.splitter = StratifiedKFold(
+            n_splits=num_folds, shuffle=True, random_state=seed
+        )
         self.loss_fn = FocalLoss()
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()

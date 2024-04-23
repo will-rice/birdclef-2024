@@ -25,11 +25,12 @@ def main() -> None:
     parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--num_workers", default=16, type=int)
     parser.add_argument("--weights_path", type=Path, default=None)
+    parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--debug", action="store_true")
 
     args = parser.parse_args()
 
-    seed_everything(1234)
+    seed_everything(args.seed)
 
     log_path = args.log_path / args.name
     log_path.mkdir(exist_ok=True, parents=True)
@@ -47,6 +48,7 @@ def main() -> None:
         log_path=log_path,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        seed=args.seed,
         debug=args.debug,
     )
     trainer.fit()

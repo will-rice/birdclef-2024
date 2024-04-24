@@ -26,7 +26,7 @@ class EfficientFormerClassifier(nn.Module):
         """Forward pass."""
         if from_audio:
             x = self.mel_fn(x)
-        x = self.normalize(x)
+            x = self.normalize(x)
         x = self.encoder(x, return_dict=False)[0]
         x = x.mean(1)
         x = self.dropout(x)

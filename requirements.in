@@ -8,8 +8,11 @@ pytest
 torch
 torchvision
 torchaudio
-pytorch-lightning
 transformers
 pandas
 audiomentations
 torch-audiomentations
+kagglehub
+ffmpeg-python
+requests
+timm

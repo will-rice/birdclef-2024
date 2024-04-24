@@ -9,7 +9,7 @@ from birdclef.modeling.conv2d.modules import DownsampleBlock2D
 from birdclef.signal import MelSpectrogram
 
 
-class Conv2DModel(nn.Module):
+class Conv2DClassifier(nn.Module):
     """Conv2d model."""
 
     def __init__(
@@ -35,6 +35,7 @@ class Conv2DModel(nn.Module):
         """Forward pass."""
         with torch.no_grad():
             x = self.mel_fn(x)
+            x = self.normalize(x)
         x = self.in_conv(x)
         x = self.blocks(x)
         x = x.mean([2, 3])

@@ -5,7 +5,7 @@ import torchaudio
 from torch import nn
 from transformers import AutoModel
 
-from birdclef.modeling.modules import AvgPool
+from birdclef.modeling.modules import GlobalAvgPool
 
 
 class WavLMClassifier(nn.Module):
@@ -20,7 +20,7 @@ class WavLMClassifier(nn.Module):
             param.requires_grad = False
         self.resample = torchaudio.transforms.Resample(32000, 16000)
 
-        self.pool = AvgPool()
+        self.pool = GlobalAvgPool()
         self.head = nn.Linear(self.encoder.config.hidden_size, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

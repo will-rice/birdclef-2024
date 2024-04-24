@@ -1,4 +1,4 @@
-"""BirdCLEF Dataset."""
+"""Pseudo labeled dataset."""
 
 import random
 from pathlib import Path
@@ -6,13 +6,13 @@ from typing import NamedTuple
 
 import pandas as pd
 import torch
-from torch import nn
+import torchaudio
+from audiomentations import Compose, PitchShift, Reverse, Shift, TimeStretch
 from torch.utils.data import Dataset
 from torchvision.transforms import v2
+from transformers.utils import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
-from birdclef import utils
 from birdclef.signal import MelSpectrogram
-from birdclef.transforms import AudiomentationsTransform
 
 
 class Batch(NamedTuple):
@@ -23,8 +23,8 @@ class Batch(NamedTuple):
     labels: torch.Tensor
 
 
-class BirdCLEF2024Dataset(Dataset):
-    """BirdCLEF Dataset."""
+class PseudoLabeledDataset(Dataset):
+    """Pseudo Labeled Dataset."""
 
     def __init__(
         self,
@@ -35,65 +35,41 @@ class BirdCLEF2024Dataset(Dataset):
         use_secondary_labels: bool = False,
         secondary_coefficient: float = 1.0,
         random_crop: bool = False,
-        use_end: bool = False,
         balanced: bool = False,
-        add_nocall: bool = False,
-        rating_threshold: float = 0.0,
-        nocall_p: float = 0.2,
-        image_normalize: bool = True,
+        use_end: bool = False,
     ) -> None:
         super().__init__()
         self.root = root
-        self.metadata = pd.read_csv(root / "train_metadata.csv")
-        self.labels = sorted(self.metadata.primary_label.unique())
-        self.metadata = self.metadata[self.metadata.rating >= rating_threshold]
+        train_metadata = pd.read_csv(root / "train_metadata.csv")
+        self.labels = sorted(train_metadata.primary_label.unique())
+        metadata = pd.read_csv(root / "labeled_soundscapes" / "metadata.csv")
+        counts = metadata.primary_label.value_counts()
+        self.metadata = metadata[~metadata.primary_label.isin(counts[counts < 2].index)]
         self.all_labels = self.metadata.primary_label.tolist()
         self.max_length = 32000 * max_seconds
         self.multi_label_augment = multi_label_augment
         self.use_secondary_labels = use_secondary_labels
         self.secondary_coefficient = secondary_coefficient
         self.random_crop = random_crop
-        self.use_end = use_end
         self.balanced = balanced
-        self.add_nocall = add_nocall
-        self.nocall_p = nocall_p
-        self.augment = augment
-
-        if self.add_nocall:
-            self.nocall = sorted(
-                (root / "labeled_soundscapes" / "nocall").glob("**/*.flac")
-            )
-
-        self.waveform_augmentations = AudiomentationsTransform(
-            background_noise_root=root / "labeled_soundscapes" / "nocall",
-            short_noises_root=root / "labeled_soundscapes" / "nocall",
-            add_pitch_shift=True,
-            add_time_stretch=True,
-            add_background_noise=False,
-            add_short_noises=False,
-            add_time_mask=False,
-            add_gain=False,
-            add_gaussian_noise=False,
-            add_color_noise=False,
+        self.use_end = use_end
+        self.waveform_augmentations = Compose(
+            transforms=[
+                PitchShift(p=0.5),
+                TimeStretch(p=0.5),
+                Reverse(p=0.5),
+                Shift(p=0.5),
+            ],
+            p=1.0,
+            shuffle=True,
         )
         self.spec_augmentations = v2.Compose(
-            [v2.RandomHorizontalFlip(p=0.5), v2.RandomErasing(p=0.3)]
+            [v2.RandomHorizontalFlip(p=0.5), v2.RandomErasing(p=0.5)]
         )
 
-        self.spec_fn = MelSpectrogram(image_normalize=image_normalize)
-        sample_weights = dict(
-            (
-                self.metadata.primary_label.value_counts()
-                / self.metadata.primary_label.value_counts().sum()
-            )
-            ** (-0.5)
-        )
-        self.sample_weights = [sample_weights[k] for k in sorted(sample_weights)]
-        self.has_secondary_labels = []
-        for secondary_labels in self.metadata.secondary_labels:
-            self.has_secondary_labels.append(
-                any(label in self.labels for label in eval(secondary_labels))
-            )
+        self.normalize = v2.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)
+        self.spec_fn = MelSpectrogram()
+        self.augment = augment
 
     def __len__(self) -> int:
         """Length."""
@@ -102,7 +78,6 @@ class BirdCLEF2024Dataset(Dataset):
     def __getitem__(self, idx: int) -> Batch:
         """Get item."""
         if self.balanced:
-            # This allows leakage from validation set
             random_label = random.choice(self.labels)
             sample = (
                 self.metadata.loc[self.metadata.primary_label == random_label]
@@ -113,10 +88,10 @@ class BirdCLEF2024Dataset(Dataset):
             sample = self.metadata.iloc[idx]
 
         label = sample.primary_label
-        label_id = torch.tensor(self.labels.index(sample.primary_label))
-        label_one_hot = nn.functional.one_hot(
-            label_id, num_classes=len(self.labels)
-        ).float()
+        label_one_hot = torch.zeros(len(self.labels))
+        if label in set(self.labels):
+            label_id = torch.tensor(self.labels.index(label))
+            label_one_hot[label_id] = 1.0
 
         if self.use_secondary_labels:
             for secondary_label in eval(sample.secondary_labels):
@@ -124,7 +99,7 @@ class BirdCLEF2024Dataset(Dataset):
                     secondary_label_id = self.labels.index(secondary_label)
                     label_one_hot[secondary_label_id] = self.secondary_coefficient
 
-        audio = self.load_audio(self.root / "train_audio" / sample.filename)
+        audio = self.load_audio(self.root / "labeled_soundscapes" / sample.filepath)
 
         if self.multi_label_augment:
             # This allows leakage from validation set
@@ -139,7 +114,7 @@ class BirdCLEF2024Dataset(Dataset):
                     .iloc[0]
                 )
                 secondary_audio = self.load_audio(
-                    self.root / "train_audio" / secondary_sample.filename
+                    self.root / "labeled_soundscapes" / secondary_sample.filepath
                 )
                 audio += secondary_audio
                 label_one_hot[self.labels.index(random_label)] = (
@@ -147,15 +122,14 @@ class BirdCLEF2024Dataset(Dataset):
                 )
                 labels.pop(labels.index(random_label))
 
-        if self.add_nocall and random.random() <= self.nocall_p:
-            path = random.choice(self.nocall)
-            audio = self.load_audio(path)
-            label_one_hot = torch.zeros_like(label_one_hot)
-
         if self.augment:
-            audio = self.waveform_augmentations(audio)
+            audio = self.waveform_augmentations(
+                audio.numpy().copy().squeeze(0), sample_rate=32000
+            )
+            audio = torch.from_numpy(audio.copy()).unsqueeze(0)
 
         spec = self.spec_fn(audio)
+        spec = self.normalize(spec)
 
         if self.augment:
             spec = self.spec_augmentations(spec)
@@ -164,7 +138,9 @@ class BirdCLEF2024Dataset(Dataset):
 
     def load_audio(self, path: Path) -> torch.Tensor:
         """Load sample."""
-        audio = utils.load_audio(str(path), num_frames=self.max_length)
+        audio, sr = torchaudio.load(
+            str(path), num_frames=-1 if self.random_crop else self.max_length
+        )
 
         if audio.shape[1] < self.max_length:
             num_repeats = self.max_length // audio.shape[1] + 1

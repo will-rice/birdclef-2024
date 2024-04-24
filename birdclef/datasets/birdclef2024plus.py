@@ -23,7 +23,7 @@ class Batch(NamedTuple):
     labels: torch.Tensor
 
 
-class BirdCLEF2024Dataset(Dataset):
+class BirdCLEF2024DatasetPlus(Dataset):
     """BirdCLEF Dataset."""
 
     def __init__(
@@ -31,30 +31,27 @@ class BirdCLEF2024Dataset(Dataset):
         root: Path,
         augment: bool = False,
         max_seconds: int = 5,
-        multi_label_augment: bool = False,
-        use_secondary_labels: bool = False,
-        secondary_coefficient: float = 1.0,
         random_crop: bool = False,
         use_end: bool = False,
-        balanced: bool = False,
+        use_secondary_labels: bool = False,
+        secondary_coefficient: float = 1.0,
         add_nocall: bool = False,
-        rating_threshold: float = 0.0,
         nocall_p: float = 0.2,
-        image_normalize: bool = True,
     ) -> None:
         super().__init__()
         self.root = root
         self.metadata = pd.read_csv(root / "train_metadata.csv")
-        self.labels = sorted(self.metadata.primary_label.unique())
-        self.metadata = self.metadata[self.metadata.rating >= rating_threshold]
-        self.all_labels = self.metadata.primary_label.tolist()
+        self.samples = list(root.glob("train_audio/**/*.ogg"))
+        self.samples += list(root.glob("train_audio_plus/**/*.wav"))
+        self.samples = [p for p in self.samples if p.parent.name != "nocall"]
+        self.labels = sorted({p.parent.name for p in self.samples})
+        assert len(self.labels) == 182
+        self.all_labels = [p.parent.name for p in self.samples]
         self.max_length = 32000 * max_seconds
-        self.multi_label_augment = multi_label_augment
+        self.random_crop = random_crop
         self.use_secondary_labels = use_secondary_labels
         self.secondary_coefficient = secondary_coefficient
-        self.random_crop = random_crop
         self.use_end = use_end
-        self.balanced = balanced
         self.add_nocall = add_nocall
         self.nocall_p = nocall_p
         self.augment = augment
@@ -77,75 +74,37 @@ class BirdCLEF2024Dataset(Dataset):
             add_color_noise=False,
         )
         self.spec_augmentations = v2.Compose(
-            [v2.RandomHorizontalFlip(p=0.5), v2.RandomErasing(p=0.3)]
+            [v2.RandomHorizontalFlip(p=0.5), v2.RandomErasing(p=0.5)]
         )
 
-        self.spec_fn = MelSpectrogram(image_normalize=image_normalize)
-        sample_weights = dict(
-            (
-                self.metadata.primary_label.value_counts()
-                / self.metadata.primary_label.value_counts().sum()
-            )
-            ** (-0.5)
-        )
-        self.sample_weights = [sample_weights[k] for k in sorted(sample_weights)]
-        self.has_secondary_labels = []
-        for secondary_labels in self.metadata.secondary_labels:
-            self.has_secondary_labels.append(
-                any(label in self.labels for label in eval(secondary_labels))
-            )
+        self.spec_fn = MelSpectrogram()
 
     def __len__(self) -> int:
         """Length."""
-        return len(self.metadata)
+        return len(self.samples)
 
     def __getitem__(self, idx: int) -> Batch:
         """Get item."""
-        if self.balanced:
-            # This allows leakage from validation set
-            random_label = random.choice(self.labels)
-            sample = (
-                self.metadata.loc[self.metadata.primary_label == random_label]
-                .sample()
-                .iloc[0]
-            )
-        else:
-            sample = self.metadata.iloc[idx]
+        path = self.samples[idx]
 
-        label = sample.primary_label
-        label_id = torch.tensor(self.labels.index(sample.primary_label))
+        label = path.parent.stem
+        label_id = torch.tensor(self.labels.index(label))
         label_one_hot = nn.functional.one_hot(
             label_id, num_classes=len(self.labels)
         ).float()
 
         if self.use_secondary_labels:
-            for secondary_label in eval(sample.secondary_labels):
-                if secondary_label in set(self.labels):
-                    secondary_label_id = self.labels.index(secondary_label)
-                    label_one_hot[secondary_label_id] = self.secondary_coefficient
+            sample = self.metadata[
+                self.metadata.filename == path.parent.name + "/" + path.name
+            ]
+            if len(sample) > 0:
+                sample = sample.iloc[0]
+                for secondary_label in eval(sample.secondary_labels):
+                    if secondary_label in set(self.labels):
+                        secondary_label_id = self.labels.index(secondary_label)
+                        label_one_hot[secondary_label_id] = self.secondary_coefficient
 
-        audio = self.load_audio(self.root / "train_audio" / sample.filename)
-
-        if self.multi_label_augment:
-            # This allows leakage from validation set
-            num_secondary_samples = random.randint(0, 3)
-            labels = self.labels.copy()
-            labels.pop(labels.index(label))
-            for _ in range(num_secondary_samples):
-                random_label = random.choice(labels)
-                secondary_sample = (
-                    self.metadata.loc[self.metadata.primary_label == random_label]
-                    .sample()
-                    .iloc[0]
-                )
-                secondary_audio = self.load_audio(
-                    self.root / "train_audio" / secondary_sample.filename
-                )
-                audio += secondary_audio
-                label_one_hot[self.labels.index(random_label)] = (
-                    self.secondary_coefficient
-                )
-                labels.pop(labels.index(random_label))
+        audio = self.load_audio(path)
 
         if self.add_nocall and random.random() <= self.nocall_p:
             path = random.choice(self.nocall)
@@ -164,7 +123,9 @@ class BirdCLEF2024Dataset(Dataset):
 
     def load_audio(self, path: Path) -> torch.Tensor:
         """Load sample."""
-        audio = utils.load_audio(str(path), num_frames=self.max_length)
+        audio = utils.load_audio(
+            str(path), num_frames=-1 if self.random_crop else self.max_length
+        )
 
         if audio.shape[1] < self.max_length:
             num_repeats = self.max_length // audio.shape[1] + 1

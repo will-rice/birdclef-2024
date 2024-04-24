@@ -5,7 +5,7 @@ import torchaudio
 from torch import nn
 from transformers import AutoModel, T5Config, T5EncoderModel
 
-from birdclef.modeling.modules import AvgPool
+from birdclef.modeling.modules import GlobalAvgPool
 
 
 class EncodecClassifier(nn.Module):
@@ -36,15 +36,14 @@ class EncodecClassifier(nn.Module):
                 dropout_rate=dropout,
             )
         )
-        self.lm = torch.compile(self.lm)
-        self.pool = AvgPool()
+        self.pool = GlobalAvgPool()
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.lm.config.hidden_size, num_classes)
+        self.lm = torch.compile(self.lm)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
         x = self.resample(x)
-
         with torch.no_grad():
             x = self.encoder.encode(x, return_dict=False)[0][0].sum(1)
         x = self.lm(x, return_dict=False)[0]

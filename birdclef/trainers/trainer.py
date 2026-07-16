@@ -242,7 +242,7 @@ class Trainer:
 
         sklearn_roc_auc = 0.0
         count = 0
-        for label, prob in zip(labels, probs):
+        for label, prob in zip(labels, probs, strict=False):
             if label.sum() == 0.0:
                 continue
             sklearn_roc_auc += roc_auc_score(label, prob, average="macro")

@@ -272,7 +272,7 @@ class StratifiedKFoldTrainer:
         self.min_max_prob.update(probs.max())
 
         sklearn_roc_auc = 0.0
-        for label, prob in zip(labels, probs):
+        for label, prob in zip(labels, probs, strict=False):
             sklearn_roc_auc += roc_auc_score(label, prob, average="macro")
 
         sklearn_roc_auc /= len(labels)

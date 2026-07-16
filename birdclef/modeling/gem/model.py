@@ -49,7 +49,11 @@ class GeMClassifier(torch.nn.Module):
         x = nn.functional.interpolate(x, size=self.image_size, mode="bilinear")
         ms = self.backbone(x)
         h = torch.cat(
-            [global_pool(m) for m, global_pool in zip(ms, self.global_pools)], dim=1
+            [
+                global_pool(m)
+                for m, global_pool in zip(ms, self.global_pools, strict=False)
+            ],
+            dim=1,
         )
         x = self.neck(h)
         x = self.head(x)
